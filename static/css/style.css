@@ -1,0 +1,148 @@
+/* ── General ─────────────────────────────────────────── */
+body {
+    background: #f5f6fa;
+    font-size: 14px;
+}
+
+/* ── Building Grid ───────────────────────────────────── */
+.building-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 6px;
+}
+
+.building-btn {
+    font-size: 0.8rem;
+    padding: 8px 4px;
+    font-weight: 600;
+}
+
+/* ── Room Cards ──────────────────────────────────────── */
+.room-card {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.room-header {
+    cursor: pointer;
+    background: #fff;
+    transition: background 0.15s;
+}
+
+.room-header:hover {
+    background: #e9ecef;
+}
+
+.room-code {
+    font-size: 0.95rem;
+}
+
+.chevron-icon {
+    transition: transform 0.2s;
+    font-size: 0.75rem;
+}
+
+.room-header[aria-expanded="true"] .chevron-icon,
+.room-header:not(.collapsed) .chevron-icon {
+    transform: rotate(180deg);
+}
+
+/* ── Checklist Table ─────────────────────────────────── */
+.checklist-table td {
+    padding: 3px 4px;
+    vertical-align: middle;
+}
+
+.field-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #555;
+    white-space: nowrap;
+    width: 100px;
+}
+
+.field-options {
+    width: calc(100% - 100px);
+}
+
+.field-options .btn {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+}
+
+.obs-input {
+    font-size: 0.8rem;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 576px) {
+    body {
+        font-size: 13px;
+    }
+
+    .field-label {
+        font-size: 0.75rem;
+        width: 75px;
+    }
+
+    .field-options .btn {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+    }
+
+    .building-grid {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    }
+
+    .navbar-brand {
+        font-size: 1rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .checklist-container {
+        columns: 2;
+        column-gap: 12px;
+    }
+
+    .room-card {
+        break-inside: avoid;
+    }
+}
+
+@media (min-width: 1200px) {
+    .checklist-container {
+        columns: 3;
+    }
+}
+
+/* ── Landscape on mobile ─────────────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+    .navbar {
+        padding-top: 2px;
+        padding-bottom: 2px;
+    }
+
+    main {
+        padding-top: 4px !important;
+    }
+
+    .checklist-container {
+        columns: 2;
+    }
+}
+
+/* ── Dashboard ───────────────────────────────────────── */
+.card {
+    border-radius: 8px;
+}
+
+/* ── Table badges ────────────────────────────────────── */
+.badge {
+    font-size: 0.7rem;
+}
+
+/* ── Toast ────────────────────────────────────────────── */
+.toast {
+    min-width: 250px;
+}
