@@ -1,10 +1,91 @@
-/* ── General ─────────────────────────────────────────── */
+:root {
+    --app-red: #B42318;
+    --app-red-dark: #912018;
+    --app-red-soft: #F04438;
+    --app-bg: #f8f4f4;
+}
+
 body {
-    background: #f5f6fa;
+    background: var(--app-bg);
     font-size: 14px;
 }
 
-/* ── Building Grid ───────────────────────────────────── */
+.app-navbar,
+.bg-primary {
+    background-color: var(--app-red) !important;
+}
+
+.app-navbar-shell {
+    align-items: center;
+    row-gap: 0.5rem;
+}
+
+.corner-logo {
+    max-height: 42px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+
+.logo-slot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+}
+
+.navbar-brand {
+    font-size: 1.15rem;
+}
+
+.nav-link.active {
+    font-weight: 700;
+}
+
+.text-primary {
+    color: var(--app-red) !important;
+}
+
+.border-primary {
+    border-color: rgba(180, 35, 24, 0.35) !important;
+}
+
+.btn-primary,
+.btn-outline-primary:hover,
+.btn-outline-primary:active,
+.btn-outline-primary.active {
+    background-color: var(--app-red) !important;
+    border-color: var(--app-red) !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: var(--app-red-dark) !important;
+    border-color: var(--app-red-dark) !important;
+}
+
+.btn-outline-primary {
+    color: var(--app-red) !important;
+    border-color: var(--app-red) !important;
+}
+
+.form-check-input:checked,
+.form-control:focus,
+.form-select:focus {
+    border-color: rgba(180, 35, 24, 0.4);
+    box-shadow: 0 0 0 0.25rem rgba(180, 35, 24, 0.15);
+}
+
+.page-link {
+    color: var(--app-red);
+}
+
+.page-item.active .page-link {
+    background-color: var(--app-red);
+    border-color: var(--app-red);
+}
+
 .building-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
@@ -17,10 +98,17 @@ body {
     font-weight: 600;
 }
 
-/* ── Room Cards ──────────────────────────────────────── */
 .room-card {
-    border-radius: 8px;
+    border-radius: 10px;
     overflow: hidden;
+    border: 1px solid rgba(180, 35, 24, 0.06);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.room-card-active {
+    border-color: rgba(180, 35, 24, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(180, 35, 24, 0.12);
+    transform: translateY(-1px);
 }
 
 .room-header {
@@ -30,7 +118,7 @@ body {
 }
 
 .room-header:hover {
-    background: #e9ecef;
+    background: #f8eceb;
 }
 
 .room-code {
@@ -47,7 +135,6 @@ body {
     transform: rotate(180deg);
 }
 
-/* ── Checklist Table ─────────────────────────────────── */
 .checklist-table td {
     padding: 3px 4px;
     vertical-align: middle;
@@ -74,7 +161,18 @@ body {
     font-size: 0.8rem;
 }
 
-/* ── Responsive ──────────────────────────────────────── */
+.card {
+    border-radius: 10px;
+}
+
+.badge {
+    font-size: 0.7rem;
+}
+
+.toast {
+    min-width: 250px;
+}
+
 @media (max-width: 576px) {
     body {
         font-size: 13px;
@@ -97,6 +195,10 @@ body {
     .navbar-brand {
         font-size: 1rem;
     }
+
+    .corner-logo {
+        max-height: 30px;
+    }
 }
 
 @media (min-width: 768px) {
@@ -116,7 +218,6 @@ body {
     }
 }
 
-/* ── Landscape on mobile ─────────────────────────────── */
 @media (max-height: 500px) and (orientation: landscape) {
     .navbar {
         padding-top: 2px;
@@ -130,19 +231,8 @@ body {
     .checklist-container {
         columns: 2;
     }
-}
 
-/* ── Dashboard ───────────────────────────────────────── */
-.card {
-    border-radius: 8px;
-}
-
-/* ── Table badges ────────────────────────────────────── */
-.badge {
-    font-size: 0.7rem;
-}
-
-/* ── Toast ────────────────────────────────────────────── */
-.toast {
-    min-width: 250px;
+    .corner-logo {
+        max-height: 26px;
+    }
 }
