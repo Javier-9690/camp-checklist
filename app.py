@@ -1,5 +1,6 @@
 import os
 import io
+from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
 from openpyxl import Workbook
@@ -8,6 +9,8 @@ from openpyxl.utils import get_column_letter
 from models import db, Room, Receptionist, Checklist
 from rooms_data import get_buildings
 from sqlalchemy import func, cast, Date
+
+load_dotenv()
 
 app = Flask(__name__)
 
