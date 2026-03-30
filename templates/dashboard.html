@@ -1,44 +1,28 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
+
 {% block head %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<style>
-    .chart-wrapper {
-        position: relative;
-        width: 100%;
-        height: 300px;
-    }
-    @media (max-width: 767px) {
-        .chart-wrapper {
-            height: 250px;
-        }
-    }
-    @media (max-height: 500px) and (orientation: landscape) {
-        .chart-wrapper {
-            height: 200px;
-        }
-    }
-</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
-        <h4 class="mb-0"><i class="bi bi-graph-up"></i> Dashboard</h4>
-        <small class="text-muted" id="dashboardScope">Mostrando: Últimos 7 día(s)</small>
+        <h4 class="mb-0 text-primary"><i class="bi bi-graph-up"></i> Dashboard</h4>
+        <small class="text-muted" id="dashboardScope">Mostrando: últimos 7 días</small>
     </div>
-    <div class="d-flex gap-2 align-items-end flex-wrap">
+    <div class="d-flex gap-2 align-items-end flex-wrap justify-content-end">
         <div>
-            <label class="text-muted small d-block">Período</label>
+            <label class="form-label mb-1 d-block">Período</label>
             <select id="daysFilter" class="form-select form-select-sm">
                 <option value="1">Hoy</option>
-                <option value="7" selected>7 días</option>
-                <option value="15">15 días</option>
-                <option value="30">30 días</option>
+                <option value="7" selected>Últimos 7 días</option>
+                <option value="15">Últimos 15 días</option>
+                <option value="30">Últimos 30 días</option>
             </select>
         </div>
         <div>
-            <label class="text-muted small d-block">Fecha específica</label>
+            <label class="form-label mb-1 d-block">Fecha específica</label>
             <input type="date" id="specificDate" class="form-control form-control-sm">
         </div>
         <div>
@@ -160,29 +144,18 @@ function updateScopeLabel(data) {
     document.getElementById('dashboardScope').textContent = `Mostrando: ${data.filter_label}`;
 }
 
-async function loadDashboard() {
-    const params = getDashboardParams();
-    const resp = await fetch(`/api/dashboard/stats?${params.toString()}`);
-    const data = await resp.json();
-
-    document.getElementById('kpiTotal').textContent = data.total_checklists;
-    document.getElementById('kpiRooms').textContent = data.rooms_checked;
-    document.getElementById('kpiTotalRooms').textContent = data.total_rooms;
-    const coverage = data.total_rooms > 0
-        ? Math.round((data.rooms_checked / data.total_rooms) * 100) + '%'
-        : '0%';
-    document.getElementById('kpiCoverage').textContent = coverage;
-    updateScopeLabel(data);
-
-    destroyCharts();
+function buildDailyChart(data) {
+    const dailyItems = Array.isArray(data.daily) && data.daily.length > 0
+        ? data.daily
+        : [{ date: 'Sin datos', count: 0 }];
 
     charts.daily = new Chart(document.getElementById('chartDaily'), {
         type: 'bar',
         data: {
-            labels: data.daily.map(d => d.date),
+            labels: dailyItems.map(d => d.date),
             datasets: [{
                 label: 'Chequeos',
-                data: data.daily.map(d => d.count),
+                data: dailyItems.map(d => d.count),
                 backgroundColor: 'rgba(180,35,24,0.75)',
                 borderRadius: 4
             }]
@@ -193,15 +166,21 @@ async function loadDashboard() {
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
         }
     });
+}
+
+function buildReceptionistChart(data) {
+    const items = Array.isArray(data.by_receptionist) && data.by_receptionist.length > 0
+        ? data.by_receptionist
+        : [{ name: 'Sin datos', count: 1 }];
 
     const recColors = ['#B42318', '#D92D20', '#F04438', '#FDA29B', '#7A271A', '#912018', '#FECDCA', '#B54708', '#E31B54', '#BE123C'];
     charts.receptionist = new Chart(document.getElementById('chartReceptionist'), {
         type: 'doughnut',
         data: {
-            labels: data.by_receptionist.map(r => r.name),
+            labels: items.map(r => r.name),
             datasets: [{
-                data: data.by_receptionist.map(r => r.count),
-                backgroundColor: recColors.slice(0, Math.max(data.by_receptionist.length, 1))
+                data: items.map(r => r.count),
+                backgroundColor: recColors.slice(0, Math.max(items.length, 1))
             }]
         },
         options: {
@@ -214,10 +193,15 @@ async function loadDashboard() {
             }
         }
     });
+}
 
+function buildIssuesChart(data) {
     const rawIssueEntries = Object.entries(data.issues || {});
     const nonZeroIssues = rawIssueEntries.filter(([, value]) => value > 0);
-    const issueEntries = nonZeroIssues.length > 0 ? nonZeroIssues : rawIssueEntries;
+    const issueEntries = nonZeroIssues.length > 0
+        ? nonZeroIssues
+        : (rawIssueEntries.length > 0 ? rawIssueEntries : [['Sin datos', 0]]);
+
     document.getElementById('issuesEmpty').classList.toggle('d-none', nonZeroIssues.length > 0);
 
     charts.issues = new Chart(document.getElementById('chartIssues'), {
@@ -241,14 +225,20 @@ async function loadDashboard() {
             }
         }
     });
+}
+
+function buildBuildingChart(data) {
+    const items = Array.isArray(data.by_building) && data.by_building.length > 0
+        ? data.by_building
+        : [{ building: 'Sin datos', count: 0 }];
 
     charts.building = new Chart(document.getElementById('chartBuilding'), {
         type: 'bar',
         data: {
-            labels: data.by_building.map(b => b.building),
+            labels: items.map(b => b.building),
             datasets: [{
                 label: 'Chequeos',
-                data: data.by_building.map(b => b.count),
+                data: items.map(b => b.count),
                 backgroundColor: 'rgba(145,32,24,0.75)',
                 borderRadius: 4
             }]
@@ -262,6 +252,27 @@ async function loadDashboard() {
             }
         }
     });
+}
+
+async function loadDashboard() {
+    const params = getDashboardParams();
+    const resp = await fetch(`/api/dashboard/stats?${params.toString()}`);
+    const data = await resp.json();
+
+    document.getElementById('kpiTotal').textContent = data.total_checklists;
+    document.getElementById('kpiRooms').textContent = data.rooms_checked;
+    document.getElementById('kpiTotalRooms').textContent = data.total_rooms;
+    const coverage = data.total_rooms > 0
+        ? Math.round((data.rooms_checked / data.total_rooms) * 100) + '%'
+        : '0%';
+    document.getElementById('kpiCoverage').textContent = coverage;
+    updateScopeLabel(data);
+
+    destroyCharts();
+    buildDailyChart(data);
+    buildReceptionistChart(data);
+    buildIssuesChart(data);
+    buildBuildingChart(data);
 }
 
 document.getElementById('daysFilter').addEventListener('change', () => {

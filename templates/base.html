@@ -12,61 +12,66 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top app-navbar">
         <div class="container-fluid app-navbar-shell">
-            <div class="app-navbar-top">
-                <div class="app-navbar-side app-navbar-left">
+            <div class="app-brand-row">
+                <div class="app-brand-side app-brand-left">
                     <span class="logo-slot logo-slot-left">
                         <img
                             src="{{ url_for('static', filename='css/img/Aramark.png') }}"
                             alt="Aramark"
                             class="corner-logo corner-logo-aramark"
-                            onerror="this.parentElement.style.display='none'"
+                            onerror="this.parentElement.style.visibility='hidden'"
                         >
                     </span>
                 </div>
 
-                <a class="navbar-brand fw-bold mb-0 app-navbar-brand" href="/">
-                    <i class="bi bi-clipboard-check"></i>
-                    <span>CampCheck</span>
-                </a>
+                <div class="app-brand-center">
+                    <a class="app-title" href="/">
+                        <i class="bi bi-clipboard-check"></i>
+                        <span>CampCheck</span>
+                    </a>
+                </div>
 
-                <div class="app-navbar-side app-navbar-right">
+                <div class="app-brand-side app-brand-right">
                     <span class="logo-slot logo-slot-right">
                         <img
                             src="{{ url_for('static', filename='css/img/Escondida.png') }}"
                             alt="Escondida"
                             class="corner-logo corner-logo-escondida"
-                            onerror="this.parentElement.style.display='none'"
+                            onerror="this.parentElement.style.visibility='hidden'"
                         >
                     </span>
-                    <button class="navbar-toggler app-navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Alternar navegación">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
                 </div>
             </div>
 
-            <div class="collapse navbar-collapse app-navbar-menu" id="navMain">
-                <ul class="navbar-nav ms-lg-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
-                            <i class="bi bi-house"></i> Inicio
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">
-                            <i class="bi bi-graph-up"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/history' %}active{% endif %}" href="/history">
-                            <i class="bi bi-clock-history"></i> Historial
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/receptionists' %}active{% endif %}" href="/receptionists">
-                            <i class="bi bi-people"></i> Recepcionistas
-                        </a>
-                    </li>
-                </ul>
+            <div class="app-nav-row">
+                <button class="navbar-toggler app-navbar-toggler d-lg-none ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Alternar navegación">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse app-navbar-menu" id="navMain">
+                    <ul class="navbar-nav ms-lg-auto">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
+                                <i class="bi bi-house"></i> Inicio
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">
+                                <i class="bi bi-graph-up"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/history' %}active{% endif %}" href="/history">
+                                <i class="bi bi-clock-history"></i> Historial
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/receptionists' %}active{% endif %}" href="/receptionists">
+                                <i class="bi bi-people"></i> Recepcionistas
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </nav>
