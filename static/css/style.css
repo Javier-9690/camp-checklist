@@ -15,27 +15,128 @@ body {
     background-color: var(--app-red) !important;
 }
 
+.app-navbar {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
 .app-navbar-shell {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.55rem;
+}
+
+.app-navbar-top {
+    position: relative;
+    display: flex;
     align-items: center;
-    row-gap: 0.5rem;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 64px;
+}
+
+.app-navbar-side {
+    display: flex;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+}
+
+.app-navbar-left {
+    flex: 0 1 160px;
+    justify-content: flex-start;
+}
+
+.app-navbar-right {
+    flex: 0 1 220px;
+    justify-content: flex-end;
+    gap: 0.7rem;
+}
+
+.app-navbar-brand {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    margin: 0;
+    padding: 0;
+    font-size: 1.55rem;
+    line-height: 1;
+    color: #fff !important;
+    text-align: center;
+    white-space: nowrap;
+    max-width: calc(100% - 430px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-decoration: none;
+    z-index: 1;
+}
+
+.app-navbar-brand i {
+    font-size: 1.15rem;
+}
+
+.app-navbar-menu {
+    width: 100%;
+}
+
+.app-navbar-menu .navbar-nav {
+    gap: 0.2rem;
+}
+
+.app-navbar-menu .nav-link {
+    color: rgba(255, 255, 255, 0.85) !important;
+    border-radius: 999px;
+    padding: 0.45rem 0.85rem;
+}
+
+.app-navbar-menu .nav-link:hover,
+.app-navbar-menu .nav-link.active {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .corner-logo {
-    max-height: 42px;
-    width: auto;
-    object-fit: contain;
     display: block;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.corner-logo-aramark {
+    max-height: 48px;
+    max-width: 120px;
+}
+
+.corner-logo-escondida {
+    max-height: 42px;
+    max-width: 180px;
 }
 
 .logo-slot {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    min-width: 44px;
 }
 
-.navbar-brand {
-    font-size: 1.15rem;
+.logo-slot-left {
+    justify-content: flex-start;
+}
+
+.logo-slot-right {
+    justify-content: flex-end;
+}
+
+.app-navbar-toggler {
+    border-color: rgba(255, 255, 255, 0.35);
+    padding: 0.28rem 0.45rem;
+    box-shadow: none !important;
 }
 
 .nav-link.active {
@@ -173,6 +274,56 @@ body {
     min-width: 250px;
 }
 
+@media (min-width: 992px) {
+    .app-navbar-menu {
+        display: flex !important;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .app-navbar-shell {
+        gap: 0.45rem;
+    }
+
+    .app-navbar-top {
+        min-height: 58px;
+    }
+
+    .app-navbar-left {
+        flex-basis: 110px;
+    }
+
+    .app-navbar-right {
+        flex-basis: 150px;
+    }
+
+    .app-navbar-brand {
+        max-width: calc(100% - 300px);
+        font-size: 1.15rem;
+    }
+
+    .app-navbar-menu .navbar-nav {
+        padding-top: 0.35rem;
+    }
+
+    .app-navbar-menu .nav-link {
+        border-radius: 10px;
+        padding-left: 0.7rem;
+        padding-right: 0.7rem;
+    }
+
+    .corner-logo-aramark {
+        max-height: 38px;
+        max-width: 96px;
+    }
+
+    .corner-logo-escondida {
+        max-height: 32px;
+        max-width: 132px;
+    }
+}
+
 @media (max-width: 576px) {
     body {
         font-size: 13px;
@@ -192,12 +343,47 @@ body {
         grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
     }
 
-    .navbar-brand {
-        font-size: 1rem;
+    .app-navbar-shell {
+        padding-top: 0.35rem;
+        padding-bottom: 0.45rem;
     }
 
-    .corner-logo {
+    .app-navbar-top {
+        gap: 0.45rem;
+        min-height: 50px;
+    }
+
+    .app-navbar-left {
+        flex-basis: 74px;
+    }
+
+    .app-navbar-right {
+        flex-basis: 112px;
+        gap: 0.45rem;
+    }
+
+    .app-navbar-brand {
+        font-size: 0.98rem;
+        max-width: calc(100% - 190px);
+        gap: 0.35rem;
+    }
+
+    .app-navbar-brand i {
+        font-size: 0.92rem;
+    }
+
+    .corner-logo-aramark {
         max-height: 30px;
+        max-width: 72px;
+    }
+
+    .corner-logo-escondida {
+        max-height: 26px;
+        max-width: 90px;
+    }
+
+    .navbar-toggler {
+        padding: 0.2rem 0.35rem;
     }
 }
 
@@ -232,7 +418,15 @@ body {
         columns: 2;
     }
 
-    .corner-logo {
+    .corner-logo-aramark {
         max-height: 26px;
+    }
+
+    .corner-logo-escondida {
+        max-height: 24px;
+    }
+
+    .app-navbar-brand {
+        font-size: 0.95rem;
     }
 }
