@@ -1,13 +1,13 @@
 import os
 import io
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, redirect, url_for, Response, send_file
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from models import db, Room, Receptionist, Checklist
 from rooms_data import get_buildings
-from sqlalchemy import func, cast, Date, text
+from sqlalchemy import func, cast, Date
 
 app = Flask(__name__)
 
@@ -29,6 +29,37 @@ with app.app_context():
     db.create_all()
 
 
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+def get_dashboard_range():
+    """Resolve dashboard date filtering."""
+    selected_date = (request.args.get('selected_date') or '').strip()
+    days = request.args.get('days', 7, type=int)
+
+    if selected_date:
+        try:
+            start_date = datetime.strptime(selected_date, '%Y-%m-%d')
+            end_date = start_date + timedelta(days=1)
+            return {
+                'start_date': start_date,
+                'end_date': end_date,
+                'selected_date': selected_date,
+                'days': None,
+                'label': selected_date
+            }
+        except ValueError:
+            pass
+
+    start_date = datetime.utcnow() - timedelta(days=days)
+    return {
+        'start_date': start_date,
+        'end_date': None,
+        'selected_date': '',
+        'days': days,
+        'label': f'Últimos {days} día(s)'
+    }
+
+
 # ── Pages ──────────────────────────────────────────────────────────────────
 
 @app.route('/')
@@ -45,10 +76,12 @@ def checklist_page(building):
         return redirect(url_for('index'))
     receptionist = Receptionist.query.get_or_404(receptionist_id)
     rooms = Room.query.filter_by(building=building).order_by(Room.code).all()
-    return render_template('checklist.html',
-                           rooms=rooms,
-                           building=building,
-                           receptionist=receptionist)
+    return render_template(
+        'checklist.html',
+        rooms=rooms,
+        building=building,
+        receptionist=receptionist
+    )
 
 
 @app.route('/dashboard')
@@ -203,47 +236,49 @@ def api_delete_checklist(checklist_id):
 @app.route('/api/dashboard/stats')
 def api_dashboard_stats():
     """Dashboard statistics."""
-    days = request.args.get('days', 7, type=int)
-    start_date = datetime.utcnow() - timedelta(days=days)
+    date_filter = get_dashboard_range()
+    start_date = date_filter['start_date']
+    end_date = date_filter['end_date']
 
-    # Use date() function compatible with both SQLite and PostgreSQL
     is_sqlite = 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']
-
     if is_sqlite:
         date_expr = func.date(Checklist.created_at)
     else:
         date_expr = cast(Checklist.created_at, Date)
 
-    # Checklists per day
+    base_filters = [Checklist.created_at >= start_date]
+    if end_date is not None:
+        base_filters.append(Checklist.created_at < end_date)
+
     daily = db.session.query(
         date_expr.label('date'),
         func.count(Checklist.id).label('count')
     ).filter(
-        Checklist.created_at >= start_date
+        *base_filters
     ).group_by(
         date_expr
     ).order_by(
         date_expr
     ).all()
 
-    # Checklists per receptionist
     by_receptionist = db.session.query(
         Receptionist.name,
         func.count(Checklist.id).label('count')
     ).join(
         Checklist, Checklist.receptionist_id == Receptionist.id
     ).filter(
-        Checklist.created_at >= start_date
+        *base_filters
     ).group_by(
         Receptionist.name
     ).order_by(
         func.count(Checklist.id).desc()
     ).all()
 
-    # Issues summary
-    issue_fields = ['limpieza_general', 'limpieza_banos', 'insumos_basicos',
-                    'iluminacion', 'agua', 'ventanas', 'cortinas',
-                    'estufas', 'mobiliario', 'chapas', 'cambio_sabanas']
+    issue_fields = [
+        'limpieza_general', 'limpieza_banos', 'insumos_basicos',
+        'iluminacion', 'agua', 'ventanas', 'cortinas',
+        'estufas', 'mobiliario', 'chapas', 'cambio_sabanas'
+    ]
 
     field_labels = {
         'limpieza_general': 'Limpieza General',
@@ -262,31 +297,27 @@ def api_dashboard_stats():
     issues_data = {}
     for field in issue_fields:
         count = Checklist.query.filter(
-            Checklist.created_at >= start_date,
+            *base_filters,
             getattr(Checklist, field) == 'x'
         ).count()
         issues_data[field_labels[field]] = count
 
-    # Total stats
-    total_checklists = Checklist.query.filter(
-        Checklist.created_at >= start_date
-    ).count()
+    total_checklists = Checklist.query.filter(*base_filters).count()
 
     total_rooms = Room.query.count()
     rooms_checked = db.session.query(
         func.count(func.distinct(Checklist.room_id))
     ).filter(
-        Checklist.created_at >= start_date
+        *base_filters
     ).scalar()
 
-    # By building
     by_building = db.session.query(
         Room.building,
         func.count(Checklist.id).label('count')
     ).join(
         Checklist, Checklist.room_id == Room.id
     ).filter(
-        Checklist.created_at >= start_date
+        *base_filters
     ).group_by(
         Room.building
     ).order_by(
@@ -300,7 +331,10 @@ def api_dashboard_stats():
         'total_checklists': total_checklists,
         'total_rooms': total_rooms,
         'rooms_checked': rooms_checked or 0,
-        'by_building': [{'building': b.building, 'count': b.count} for b in by_building]
+        'by_building': [{'building': b.building, 'count': b.count} for b in by_building],
+        'selected_date': date_filter['selected_date'],
+        'days': date_filter['days'],
+        'filter_label': date_filter['label']
     })
 
 
@@ -325,7 +359,7 @@ def api_history():
     if date_from:
         query = query.filter(Checklist.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
     if date_to:
-        query = query.filter(Checklist.created_at <= datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+        query = query.filter(Checklist.created_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
 
     total = query.count()
     checklists = query.order_by(Checklist.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
@@ -355,11 +389,10 @@ def api_history_export():
     if date_from:
         query = query.filter(Checklist.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
     if date_to:
-        query = query.filter(Checklist.created_at <= datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+        query = query.filter(Checklist.created_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
 
     checklists = query.order_by(Checklist.created_at.desc()).all()
 
-    # Build Excel workbook
     wb = Workbook()
     ws = wb.active
     ws.title = 'Chequeos'
@@ -371,9 +404,8 @@ def api_history_export():
         'Chapas', 'Cambio Sábanas', 'Casilleros', 'Observaciones'
     ]
 
-    # Header styling
     header_font = Font(bold=True, color='FFFFFF', size=11)
-    header_fill = PatternFill(start_color='0D6EFD', end_color='0D6EFD', fill_type='solid')
+    header_fill = PatternFill(start_color='B42318', end_color='B42318', fill_type='solid')
     header_align = Alignment(horizontal='center', vertical='center')
     thin_border = Border(
         left=Side(style='thin'), right=Side(style='thin'),
@@ -387,7 +419,6 @@ def api_history_export():
         cell.alignment = header_align
         cell.border = thin_border
 
-    # Conditional fills
     ok_fill = PatternFill(start_color='D4EDDA', end_color='D4EDDA', fill_type='solid')
     x_fill = PatternFill(start_color='F8D7DA', end_color='F8D7DA', fill_type='solid')
     center_align = Alignment(horizontal='center', vertical='center')
@@ -418,14 +449,12 @@ def api_history_export():
             cell = ws.cell(row=row_idx, column=col_idx, value=val)
             cell.border = thin_border
             cell.alignment = center_align
-            # Color OK/X cells
-            if col_idx >= 7 and col_idx <= 17:
+            if 7 <= col_idx <= 17:
                 if val == 'OK':
                     cell.fill = ok_fill
                 elif val == 'X':
                     cell.fill = x_fill
 
-    # Auto-width columns
     for col in range(1, len(headers) + 1):
         max_len = len(str(headers[col - 1]))
         for row in range(2, min(len(checklists) + 2, 100)):
@@ -434,13 +463,9 @@ def api_history_export():
                 max_len = len(str(val))
         ws.column_dimensions[get_column_letter(col)].width = min(max_len + 3, 30)
 
-    # Freeze header row
     ws.freeze_panes = 'A2'
-
-    # Auto-filter
     ws.auto_filter.ref = f'A1:{get_column_letter(len(headers))}{len(checklists) + 1}'
 
-    # Save to bytes
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
