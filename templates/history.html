@@ -107,6 +107,19 @@ async function loadReceptionists() {
     });
 }
 
+async function loadBuildings() {
+    const resp = await fetch('/api/modules');
+    const data = await resp.json();
+    const sel = document.getElementById('filterBuilding');
+    sel.innerHTML = '<option value="">Todos</option>';
+    data.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.building;
+        opt.textContent = `${item.building} (${item.room_count})`;
+        sel.appendChild(opt);
+    });
+}
+
 function getFilterParams() {
     const params = new URLSearchParams();
     const dateFrom = document.getElementById('dateFrom').value;
@@ -170,7 +183,6 @@ async function loadHistory(page) {
         </tr>`;
     });
 
-    // Attach delete handlers
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', function() {
             deleteId = this.dataset.id;
@@ -181,12 +193,11 @@ async function loadHistory(page) {
         });
     });
 
-    // Pagination
     const nav = document.getElementById('pagination');
     if (data.pages > 1) {
         let html = '<ul class="pagination pagination-sm">';
         for (let i = 1; i <= Math.min(data.pages, 20); i++) {
-            html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+            html += `<li class="page-item ${i === currentPage ? 'active' : ''}'>
                 <a class="page-link" href="#" onclick="loadHistory(${i});return false">${i}</a>
             </li>`;
         }
@@ -197,7 +208,6 @@ async function loadHistory(page) {
     }
 }
 
-// Delete confirmation
 document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
     const password = document.getElementById('deletePassword').value;
     if (!password) return;
@@ -219,34 +229,15 @@ document.getElementById('btnConfirmDelete').addEventListener('click', async () =
     }
 });
 
-// Export to Excel
 document.getElementById('btnExport').addEventListener('click', () => {
     const params = getFilterParams();
     window.location.href = `/api/history/export?${params}`;
 });
 
-// Load buildings into filter
-const buildingSel = document.getElementById('filterBuilding');
-const buildings = [
-    'S18','S20','S21','S22','S23','S24','S25','S27','S28','S29',
-    'S33','S34','S35','S36','S37','S38','S39','S40',
-    '1F','2F','3F','4F','5F','6F','7F','8F','9F','10F','11F','12F','13F','14F',
-    '41G','42G','43G','44G'
-];
-buildings.forEach(b => {
-    const opt = document.createElement('option');
-    opt.value = b;
-    opt.textContent = b;
-    buildingSel.appendChild(opt);
-});
+Promise.all([loadReceptionists(), loadBuildings()]).then(() => loadHistory(1));
 
-loadReceptionists();
-
-// Auto-load on filter change
 ['dateFrom','dateTo','filterBuilding','filterRec'].forEach(id => {
     document.getElementById(id).addEventListener('change', () => loadHistory(1));
 });
-
-loadHistory(1);
 </script>
 {% endblock %}
