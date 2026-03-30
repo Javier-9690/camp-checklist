@@ -12,35 +12,38 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top app-navbar">
         <div class="container-fluid app-navbar-shell">
-            <div class="d-flex align-items-center gap-2 order-1">
-                <span class="logo-slot">
-                    <img
-                        src="{{ url_for('static', filename='img/Aramark.png') }}"
-                        alt="Aramark"
-                        class="corner-logo"
-                        onerror="this.parentElement.style.display='none'"
-                    >
-                </span>
-                <a class="navbar-brand fw-bold mb-0" href="/">
+            <div class="app-navbar-top">
+                <div class="app-navbar-side app-navbar-left">
+                    <span class="logo-slot">
+                        <img
+                            src="{{ url_for('static', filename='css/image/Aramark.png') }}"
+                            alt="Aramark"
+                            class="corner-logo"
+                            onerror="this.parentElement.style.display='none'"
+                        >
+                    </span>
+                </div>
+
+                <a class="navbar-brand fw-bold mb-0 app-navbar-brand" href="/">
                     <i class="bi bi-clipboard-check"></i> CampCheck
                 </a>
+
+                <div class="app-navbar-side app-navbar-right">
+                    <span class="logo-slot">
+                        <img
+                            src="{{ url_for('static', filename='css/image/Escondida.png') }}"
+                            alt="Escondida"
+                            class="corner-logo"
+                            onerror="this.parentElement.style.display='none'"
+                        >
+                    </span>
+                    <button class="navbar-toggler ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Alternar navegación">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </div>
             </div>
 
-            <div class="d-flex align-items-center gap-2 ms-auto order-2 order-lg-3">
-                <span class="logo-slot">
-                    <img
-                        src="{{ url_for('static', filename='img/Escondida.png') }}"
-                        alt="Escondida"
-                        class="corner-logo"
-                        onerror="this.parentElement.style.display='none'"
-                    >
-                </span>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-            </div>
-
-            <div class="collapse navbar-collapse order-3 w-100" id="navMain">
+            <div class="collapse navbar-collapse app-navbar-menu" id="navMain">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
