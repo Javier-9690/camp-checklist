@@ -23,19 +23,30 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <h4 class="mb-0"><i class="bi bi-graph-up"></i> Dashboard</h4>
-    <div class="d-flex gap-2 align-items-center">
-        <label class="text-muted small">Período:</label>
-        <select id="daysFilter" class="form-select form-select-sm" style="width:auto">
-            <option value="1">Hoy</option>
-            <option value="7" selected>7 días</option>
-            <option value="15">15 días</option>
-            <option value="30">30 días</option>
-        </select>
+    <div>
+        <h4 class="mb-0"><i class="bi bi-graph-up"></i> Dashboard</h4>
+        <small class="text-muted" id="dashboardScope">Mostrando: Últimos 7 día(s)</small>
+    </div>
+    <div class="d-flex gap-2 align-items-end flex-wrap">
+        <div>
+            <label class="text-muted small d-block">Período</label>
+            <select id="daysFilter" class="form-select form-select-sm">
+                <option value="1">Hoy</option>
+                <option value="7" selected>7 días</option>
+                <option value="15">15 días</option>
+                <option value="30">30 días</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-muted small d-block">Fecha específica</label>
+            <input type="date" id="specificDate" class="form-control form-control-sm">
+        </div>
+        <div>
+            <button id="btnClearDate" class="btn btn-sm btn-outline-secondary">Limpiar fecha</button>
+        </div>
     </div>
 </div>
 
-<!-- KPI Cards -->
 <div class="row g-2 mb-3">
     <div class="col-6 col-md-3">
         <div class="card text-center border-primary">
@@ -71,7 +82,6 @@
     </div>
 </div>
 
-<!-- Charts - uniform grid -->
 <div class="row g-3">
     <div class="col-12 col-md-6">
         <div class="card shadow-sm h-100">
@@ -95,7 +105,10 @@
     </div>
     <div class="col-12 col-md-6">
         <div class="card shadow-sm h-100">
-            <div class="card-header py-2 fw-semibold">Novedades por Categoría</div>
+            <div class="card-header py-2 fw-semibold d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                <span>Novedades por Categoría</span>
+                <small id="issuesEmpty" class="text-muted d-none">Sin novedades en el rango seleccionado</small>
+            </div>
             <div class="card-body p-2 d-flex align-items-center justify-content-center">
                 <div class="chart-wrapper">
                     <canvas id="chartIssues"></canvas>
@@ -125,11 +138,33 @@ const chartDefaults = {
     maintainAspectRatio: false
 };
 
-async function loadDashboard(days) {
-    const resp = await fetch(`/api/dashboard/stats?days=${days}`);
+function destroyCharts() {
+    Object.values(charts).forEach(chart => chart.destroy());
+    charts = {};
+}
+
+function getDashboardParams() {
+    const params = new URLSearchParams();
+    const selectedDate = document.getElementById('specificDate').value;
+    const days = document.getElementById('daysFilter').value;
+
+    if (selectedDate) {
+        params.set('selected_date', selectedDate);
+    } else {
+        params.set('days', days);
+    }
+    return params;
+}
+
+function updateScopeLabel(data) {
+    document.getElementById('dashboardScope').textContent = `Mostrando: ${data.filter_label}`;
+}
+
+async function loadDashboard() {
+    const params = getDashboardParams();
+    const resp = await fetch(`/api/dashboard/stats?${params.toString()}`);
     const data = await resp.json();
 
-    // KPIs
     document.getElementById('kpiTotal').textContent = data.total_checklists;
     document.getElementById('kpiRooms').textContent = data.rooms_checked;
     document.getElementById('kpiTotalRooms').textContent = data.total_rooms;
@@ -137,11 +172,10 @@ async function loadDashboard(days) {
         ? Math.round((data.rooms_checked / data.total_rooms) * 100) + '%'
         : '0%';
     document.getElementById('kpiCoverage').textContent = coverage;
+    updateScopeLabel(data);
 
-    // Destroy existing charts
-    Object.values(charts).forEach(c => c.destroy());
+    destroyCharts();
 
-    // Daily chart
     charts.daily = new Chart(document.getElementById('chartDaily'), {
         type: 'bar',
         data: {
@@ -149,7 +183,7 @@ async function loadDashboard(days) {
             datasets: [{
                 label: 'Chequeos',
                 data: data.daily.map(d => d.count),
-                backgroundColor: 'rgba(13,110,253,0.7)',
+                backgroundColor: 'rgba(180,35,24,0.75)',
                 borderRadius: 4
             }]
         },
@@ -160,18 +194,14 @@ async function loadDashboard(days) {
         }
     });
 
-    // Receptionist chart
-    const recColors = [
-        '#0d6efd','#198754','#ffc107','#dc3545','#0dcaf0',
-        '#6f42c1','#fd7e14','#20c997','#6610f2','#d63384'
-    ];
+    const recColors = ['#B42318', '#D92D20', '#F04438', '#FDA29B', '#7A271A', '#912018', '#FECDCA', '#B54708', '#E31B54', '#BE123C'];
     charts.receptionist = new Chart(document.getElementById('chartReceptionist'), {
         type: 'doughnut',
         data: {
             labels: data.by_receptionist.map(r => r.name),
             datasets: [{
                 data: data.by_receptionist.map(r => r.count),
-                backgroundColor: recColors.slice(0, data.by_receptionist.length)
+                backgroundColor: recColors.slice(0, Math.max(data.by_receptionist.length, 1))
             }]
         },
         options: {
@@ -185,17 +215,19 @@ async function loadDashboard(days) {
         }
     });
 
-    // Issues chart
-    const issueLabels = Object.keys(data.issues);
-    const issueValues = Object.values(data.issues);
+    const rawIssueEntries = Object.entries(data.issues || {});
+    const nonZeroIssues = rawIssueEntries.filter(([, value]) => value > 0);
+    const issueEntries = nonZeroIssues.length > 0 ? nonZeroIssues : rawIssueEntries;
+    document.getElementById('issuesEmpty').classList.toggle('d-none', nonZeroIssues.length > 0);
+
     charts.issues = new Chart(document.getElementById('chartIssues'), {
         type: 'bar',
         data: {
-            labels: issueLabels,
+            labels: issueEntries.map(([label]) => label),
             datasets: [{
                 label: 'Novedades (X)',
-                data: issueValues,
-                backgroundColor: 'rgba(220,53,69,0.7)',
+                data: issueEntries.map(([, value]) => value),
+                backgroundColor: 'rgba(217,45,32,0.78)',
                 borderRadius: 4
             }]
         },
@@ -210,7 +242,6 @@ async function loadDashboard(days) {
         }
     });
 
-    // Building chart
     charts.building = new Chart(document.getElementById('chartBuilding'), {
         type: 'bar',
         data: {
@@ -218,7 +249,7 @@ async function loadDashboard(days) {
             datasets: [{
                 label: 'Chequeos',
                 data: data.by_building.map(b => b.count),
-                backgroundColor: 'rgba(25,135,84,0.7)',
+                backgroundColor: 'rgba(145,32,24,0.75)',
                 borderRadius: 4
             }]
         },
@@ -233,10 +264,18 @@ async function loadDashboard(days) {
     });
 }
 
-document.getElementById('daysFilter').addEventListener('change', function() {
-    loadDashboard(this.value);
+document.getElementById('daysFilter').addEventListener('change', () => {
+    if (!document.getElementById('specificDate').value) {
+        loadDashboard();
+    }
 });
 
-loadDashboard(7);
+document.getElementById('specificDate').addEventListener('change', loadDashboard);
+document.getElementById('btnClearDate').addEventListener('click', () => {
+    document.getElementById('specificDate').value = '';
+    loadDashboard();
+});
+
+loadDashboard();
 </script>
 {% endblock %}
