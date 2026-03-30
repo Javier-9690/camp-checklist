@@ -2,6 +2,23 @@
 {% block title %}Dashboard{% endblock %}
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    .chart-wrapper {
+        position: relative;
+        width: 100%;
+        height: 300px;
+    }
+    @media (max-width: 767px) {
+        .chart-wrapper {
+            height: 250px;
+        }
+    }
+    @media (max-height: 500px) and (orientation: landscape) {
+        .chart-wrapper {
+            height: 200px;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -31,7 +48,7 @@
     <div class="col-6 col-md-3">
         <div class="card text-center border-success">
             <div class="card-body py-2">
-                <div class="text-muted small">Habitaciones Revisadas</div>
+                <div class="text-muted small">Hab. Revisadas</div>
                 <div class="fs-3 fw-bold text-success" id="kpiRooms">-</div>
             </div>
         </div>
@@ -54,37 +71,45 @@
     </div>
 </div>
 
-<!-- Charts -->
+<!-- Charts - uniform grid -->
 <div class="row g-3">
-    <div class="col-12 col-lg-6">
-        <div class="card shadow-sm">
+    <div class="col-12 col-md-6">
+        <div class="card shadow-sm h-100">
             <div class="card-header py-2 fw-semibold">Chequeos por Día</div>
-            <div class="card-body">
-                <canvas id="chartDaily"></canvas>
+            <div class="card-body p-2 d-flex align-items-center justify-content-center">
+                <div class="chart-wrapper">
+                    <canvas id="chartDaily"></canvas>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-12 col-lg-6">
-        <div class="card shadow-sm">
+    <div class="col-12 col-md-6">
+        <div class="card shadow-sm h-100">
             <div class="card-header py-2 fw-semibold">Chequeos por Recepcionista</div>
-            <div class="card-body">
-                <canvas id="chartReceptionist"></canvas>
+            <div class="card-body p-2 d-flex align-items-center justify-content-center">
+                <div class="chart-wrapper">
+                    <canvas id="chartReceptionist"></canvas>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-12 col-lg-6">
-        <div class="card shadow-sm">
+    <div class="col-12 col-md-6">
+        <div class="card shadow-sm h-100">
             <div class="card-header py-2 fw-semibold">Novedades por Categoría</div>
-            <div class="card-body">
-                <canvas id="chartIssues"></canvas>
+            <div class="card-body p-2 d-flex align-items-center justify-content-center">
+                <div class="chart-wrapper">
+                    <canvas id="chartIssues"></canvas>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-12 col-lg-6">
-        <div class="card shadow-sm">
+    <div class="col-12 col-md-6">
+        <div class="card shadow-sm h-100">
             <div class="card-header py-2 fw-semibold">Chequeos por Sector</div>
-            <div class="card-body">
-                <canvas id="chartBuilding"></canvas>
+            <div class="card-body p-2 d-flex align-items-center justify-content-center">
+                <div class="chart-wrapper">
+                    <canvas id="chartBuilding"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -94,6 +119,11 @@
 {% block scripts %}
 <script>
 let charts = {};
+
+const chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false
+};
 
 async function loadDashboard(days) {
     const resp = await fetch(`/api/dashboard/stats?days=${days}`);
@@ -124,7 +154,7 @@ async function loadDashboard(days) {
             }]
         },
         options: {
-            responsive: true,
+            ...chartDefaults,
             plugins: { legend: { display: false } },
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
         }
@@ -145,8 +175,13 @@ async function loadDashboard(days) {
             }]
         },
         options: {
-            responsive: true,
-            plugins: { legend: { position: 'bottom' } }
+            ...chartDefaults,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { size: 11 } }
+                }
+            }
         }
     });
 
@@ -165,10 +200,13 @@ async function loadDashboard(days) {
             }]
         },
         options: {
+            ...chartDefaults,
             indexAxis: 'y',
-            responsive: true,
             plugins: { legend: { display: false } },
-            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            scales: {
+                x: { beginAtZero: true, ticks: { stepSize: 1 } },
+                y: { ticks: { font: { size: 10 } } }
+            }
         }
     });
 
@@ -185,9 +223,12 @@ async function loadDashboard(days) {
             }]
         },
         options: {
-            responsive: true,
+            ...chartDefaults,
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                x: { ticks: { font: { size: 9 }, maxRotation: 90, minRotation: 45 } }
+            }
         }
     });
 }

@@ -1,8 +1,10 @@
 import os
 import io
-import csv
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, redirect, url_for, Response
+from flask import Flask, render_template, request, jsonify, redirect, url_for, Response, send_file
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 from models import db, Room, Receptionist, Checklist
 from rooms_data import get_buildings
 from sqlalchemy import func, cast, Date, text
@@ -338,7 +340,7 @@ def api_history():
 
 @app.route('/api/history/export')
 def api_history_export():
-    """Export history to CSV (Excel-compatible)."""
+    """Export history to Excel (.xlsx)."""
     building = request.args.get('building', '')
     receptionist_id = request.args.get('receptionist_id', type=int)
     date_from = request.args.get('date_from', '')
@@ -357,48 +359,98 @@ def api_history_export():
 
     checklists = query.order_by(Checklist.created_at.desc()).all()
 
-    # Build CSV
-    output = io.StringIO()
-    # BOM for Excel UTF-8
-    output.write('\ufeff')
-    writer = csv.writer(output, delimiter=';')
-    writer.writerow([
+    # Build Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Chequeos'
+
+    headers = [
         'Fecha', 'Hora', 'Habitación', 'Sector', 'Recepcionista',
         'Cupos', 'Limpieza Gral', 'Baños', 'Insumos', 'Iluminación',
         'Agua', 'Ventanas', 'Cortinas', 'Estufas', 'Mobiliario',
         'Chapas', 'Cambio Sábanas', 'Casilleros', 'Observaciones'
-    ])
+    ]
 
-    for c in checklists:
-        writer.writerow([
+    # Header styling
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    header_fill = PatternFill(start_color='0D6EFD', end_color='0D6EFD', fill_type='solid')
+    header_align = Alignment(horizontal='center', vertical='center')
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    # Conditional fills
+    ok_fill = PatternFill(start_color='D4EDDA', end_color='D4EDDA', fill_type='solid')
+    x_fill = PatternFill(start_color='F8D7DA', end_color='F8D7DA', fill_type='solid')
+    center_align = Alignment(horizontal='center', vertical='center')
+
+    for row_idx, c in enumerate(checklists, 2):
+        values = [
             c.created_at.strftime('%Y-%m-%d'),
             c.created_at.strftime('%H:%M:%S'),
             c.room.code,
             c.room.building,
             c.receptionist.name,
-            c.disponibilidad_cupos,
-            c.limpieza_general,
-            c.limpieza_banos,
-            c.insumos_basicos,
-            c.iluminacion,
-            c.agua,
-            c.ventanas,
-            c.cortinas,
-            c.estufas,
-            c.mobiliario,
-            c.chapas,
-            c.cambio_sabanas,
-            c.casilleros,
-            c.observaciones
-        ])
+            c.disponibilidad_cupos.upper() if c.disponibilidad_cupos else '',
+            c.limpieza_general.upper() if c.limpieza_general else '',
+            c.limpieza_banos.upper() if c.limpieza_banos else '',
+            c.insumos_basicos.upper() if c.insumos_basicos else '',
+            c.iluminacion.upper() if c.iluminacion else '',
+            c.agua.upper() if c.agua else '',
+            c.ventanas.upper() if c.ventanas else '',
+            c.cortinas.upper() if c.cortinas else '',
+            c.estufas.upper() if c.estufas else '',
+            c.mobiliario.upper() if c.mobiliario else '',
+            c.chapas.upper() if c.chapas else '',
+            c.cambio_sabanas.upper() if c.cambio_sabanas else '',
+            c.casilleros.upper() if c.casilleros else '',
+            c.observaciones or ''
+        ]
+        for col_idx, val in enumerate(values, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+            cell.border = thin_border
+            cell.alignment = center_align
+            # Color OK/X cells
+            if col_idx >= 7 and col_idx <= 17:
+                if val == 'OK':
+                    cell.fill = ok_fill
+                elif val == 'X':
+                    cell.fill = x_fill
 
+    # Auto-width columns
+    for col in range(1, len(headers) + 1):
+        max_len = len(str(headers[col - 1]))
+        for row in range(2, min(len(checklists) + 2, 100)):
+            val = ws.cell(row=row, column=col).value
+            if val and len(str(val)) > max_len:
+                max_len = len(str(val))
+        ws.column_dimensions[get_column_letter(col)].width = min(max_len + 3, 30)
+
+    # Freeze header row
+    ws.freeze_panes = 'A2'
+
+    # Auto-filter
+    ws.auto_filter.ref = f'A1:{get_column_letter(len(headers))}{len(checklists) + 1}'
+
+    # Save to bytes
+    output = io.BytesIO()
+    wb.save(output)
     output.seek(0)
-    return Response(
-        output.getvalue(),
-        mimetype='text/csv',
-        headers={
-            'Content-Disposition': f'attachment; filename=chequeos_{datetime.now().strftime("%Y%m%d_%H%M")}.csv'
-        }
+
+    filename = f'chequeos_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
     )
 
 
