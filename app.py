@@ -1,5 +1,6 @@
 import os
 import io
+import re
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
@@ -7,7 +8,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from models import db, Room, Receptionist, Checklist
-from rooms_data import get_buildings
+from rooms_data import get_all_rooms, sort_buildings
 from sqlalchemy import func, cast, Date
 
 load_dotenv()
@@ -29,13 +30,42 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 # Delete password (configurable via env var)
 DELETE_PASSWORD = os.environ.get('DELETE_PASSWORD', 'admin2026')
 
-db.init_app(app)
+MODULE_NAME_RE = re.compile(r'^[A-Z0-9-]+$')
 
-with app.app_context():
-    db.create_all()
+db.init_app(app)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
+
+def seed_default_rooms_if_empty():
+    if Room.query.first() is not None:
+        return
+
+    for code, building in get_all_rooms():
+        db.session.add(Room(code=code, building=building))
+    db.session.commit()
+
+
+def normalize_module_name(name):
+    return re.sub(r'\s+', '', (name or '').upper())
+
+
+def get_available_modules():
+    rows = db.session.query(
+        Room.building,
+        func.count(Room.id).label('room_count')
+    ).group_by(Room.building).all()
+
+    counts_by_building = {
+        row.building: row.room_count
+        for row in rows
+    }
+    ordered_names = sort_buildings(list(counts_by_building.keys()))
+    return [
+        {'building': building, 'room_count': counts_by_building[building]}
+        for building in ordered_names
+    ]
+
 
 def get_dashboard_range():
     """Resolve dashboard date filtering."""
@@ -66,13 +96,18 @@ def get_dashboard_range():
     }
 
 
+with app.app_context():
+    db.create_all()
+    seed_default_rooms_if_empty()
+
+
 # ── Pages ──────────────────────────────────────────────────────────────────
 
 @app.route('/')
 def index():
     receptionists = Receptionist.query.filter_by(active=True).order_by(Receptionist.name).all()
-    buildings = get_buildings()
-    return render_template('index.html', receptionists=receptionists, buildings=buildings)
+    modules = get_available_modules()
+    return render_template('index.html', receptionists=receptionists, modules=modules)
 
 
 @app.route('/checklist/<building>')
@@ -104,6 +139,86 @@ def receptionists_page():
 @app.route('/history')
 def history_page():
     return render_template('history.html')
+
+
+# ── API: Modules ───────────────────────────────────────────────────────────
+
+@app.route('/api/modules', methods=['GET'])
+def api_get_modules():
+    return jsonify(get_available_modules())
+
+
+@app.route('/api/modules', methods=['POST'])
+def api_create_module():
+    data = request.get_json(silent=True) or {}
+    building = normalize_module_name(data.get('building'))
+    room_count = data.get('room_count', 0)
+
+    try:
+        room_count = int(room_count)
+    except (TypeError, ValueError):
+        room_count = 0
+
+    if not building:
+        return jsonify({'error': 'El nombre del módulo es requerido'}), 400
+    if not MODULE_NAME_RE.fullmatch(building):
+        return jsonify({'error': 'Use solo letras, números o guion en el módulo'}), 400
+    if room_count <= 0:
+        return jsonify({'error': 'La cantidad de habitaciones debe ser mayor a 0'}), 400
+    if room_count > 500:
+        return jsonify({'error': 'La cantidad de habitaciones no puede superar 500'}), 400
+    if Room.query.filter_by(building=building).first():
+        return jsonify({'error': 'Ese módulo ya existe'}), 400
+
+    width = max(2, len(str(room_count)))
+    new_rooms = []
+    for number in range(1, room_count + 1):
+        code = f'{building}{str(number).zfill(width)}'
+        if Room.query.filter_by(code=code).first():
+            return jsonify({'error': f'Ya existe una habitación con código {code}'}), 400
+        new_rooms.append(Room(code=code, building=building))
+
+    db.session.add_all(new_rooms)
+    db.session.commit()
+
+    return jsonify({
+        'ok': True,
+        'building': building,
+        'room_count': room_count
+    }), 201
+
+
+@app.route('/api/modules/<building>', methods=['DELETE'])
+def api_delete_module(building):
+    building = normalize_module_name(building)
+    data = request.get_json(silent=True) or {}
+    password = data.get('password', '')
+
+    if password != DELETE_PASSWORD:
+        return jsonify({'error': 'Clave incorrecta'}), 403
+
+    rooms = Room.query.filter_by(building=building).all()
+    if not rooms:
+        return jsonify({'error': 'El módulo no existe'}), 404
+
+    room_ids = [room.id for room in rooms]
+    deleted_checklists = 0
+    if room_ids:
+        deleted_checklists = Checklist.query.filter(
+            Checklist.room_id.in_(room_ids)
+        ).delete(synchronize_session=False)
+
+    deleted_rooms = Room.query.filter(
+        Room.id.in_(room_ids)
+    ).delete(synchronize_session=False)
+
+    db.session.commit()
+    return jsonify({
+        'ok': True,
+        'building': building,
+        'deleted_rooms': deleted_rooms,
+        'deleted_checklists': deleted_checklists
+    })
 
 
 # ── API: Receptionists ────────────────────────────────────────────────────
@@ -326,9 +441,10 @@ def api_dashboard_stats():
         *base_filters
     ).group_by(
         Room.building
-    ).order_by(
-        Room.building
     ).all()
+
+    by_building_map = {row.building: row.count for row in by_building}
+    ordered_buildings = sort_buildings(list(by_building_map.keys()))
 
     return jsonify({
         'daily': [{'date': str(d.date), 'count': d.count} for d in daily],
@@ -337,7 +453,10 @@ def api_dashboard_stats():
         'total_checklists': total_checklists,
         'total_rooms': total_rooms,
         'rooms_checked': rooms_checked or 0,
-        'by_building': [{'building': b.building, 'count': b.count} for b in by_building],
+        'by_building': [
+            {'building': building, 'count': by_building_map[building]}
+            for building in ordered_buildings
+        ],
         'selected_date': date_filter['selected_date'],
         'days': date_filter['days'],
         'filter_label': date_filter['label']

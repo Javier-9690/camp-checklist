@@ -41,22 +41,30 @@ ROOMS = {
 }
 
 
-def _sort_key(name):
-    """Sort buildings: S## by number, #F by number, ##G by number."""
-    m = re.match(r'S(\d+)', name)
+def sort_building_key(name):
+    """Sort buildings: S## by number, #F by number, ##G by number, then alphanumeric."""
+    m = re.match(r'S(\d+)$', name)
     if m:
-        return (0, int(m.group(1)))
-    m = re.match(r'(\d+)F', name)
+        return (0, int(m.group(1)), name)
+
+    m = re.match(r'(\d+)F$', name)
     if m:
-        return (1, int(m.group(1)))
-    m = re.match(r'(\d+)G', name)
+        return (1, int(m.group(1)), name)
+
+    m = re.match(r'(\d+)G$', name)
     if m:
-        return (2, int(m.group(1)))
-    return (3, 0)
+        return (2, int(m.group(1)), name)
+
+    return (3, name)
+
+
+def sort_buildings(names):
+    """Return a sorted list of building/module names."""
+    return sorted(names, key=sort_building_key)
 
 
 # Pre-sorted ordered list
-BUILDINGS_ORDERED = sorted(ROOMS.keys(), key=_sort_key)
+BUILDINGS_ORDERED = sort_buildings(ROOMS.keys())
 
 
 def get_all_rooms():
