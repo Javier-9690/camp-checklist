@@ -1,7 +1,15 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 db = SQLAlchemy()
+
+SANTIAGO_TZ = ZoneInfo('America/Santiago')
+
+
+def now_santiago():
+    """Retorna la fecha y hora actual en zona horaria de Santiago de Chile."""
+    return datetime.now(SANTIAGO_TZ).replace(tzinfo=None)
 
 
 class Receptionist(db.Model):
@@ -9,7 +17,7 @@ class Receptionist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_santiago)
     checklists = db.relationship('Checklist', backref='receptionist', lazy=True)
 
     def to_dict(self):
@@ -40,7 +48,7 @@ class Checklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=False)
     receptionist_id = db.Column(db.Integer, db.ForeignKey('receptionists.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_santiago)
 
     # Disponibilidad de cupos (p, v, v1, todos)
     disponibilidad_cupos = db.Column(db.String(10), nullable=False)

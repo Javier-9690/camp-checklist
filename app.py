@@ -3,6 +3,14 @@ import io
 import re
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+SANTIAGO_TZ = ZoneInfo('America/Santiago')
+
+
+def now_santiago():
+    """Retorna la fecha y hora actual en zona horaria de Santiago de Chile."""
+    return datetime.now(SANTIAGO_TZ).replace(tzinfo=None)
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -86,7 +94,7 @@ def get_dashboard_range():
         except ValueError:
             pass
 
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = now_santiago() - timedelta(days=days)
     return {
         'start_date': start_date,
         'end_date': None,
@@ -595,7 +603,7 @@ def api_history_export():
     wb.save(output)
     output.seek(0)
 
-    filename = f'chequeos_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+    filename = f'chequeos_{now_santiago().strftime("%Y%m%d_%H%M")}.xlsx'
     return send_file(
         output,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
